@@ -2,58 +2,103 @@
 let passback_indexedDB = null;
 function indexedDBSet(key, value, theDataBase = "db") {
   return new Promise((resolve, reject) => {
+    if (!key) {
+      reject(new Error("IndexedDB Set: Invalid key provided"));
+      return;
+    }
+    if (value === undefined) {
+      reject(new Error("IndexedDB Set: Value cannot be undefined"));
+      return;
+    }
+
     const dbName = theDataBase;
     const dbVersion = 1;
-    const request = indexedDB.open(dbName, dbVersion);
+    let request;
+
+    try {
+      request = indexedDB.open(dbName, dbVersion);
+    } catch (error) {
+      reject(new Error(`IndexedDB Set: Failed to open database - ${error.message}`));
+      return;
+    }
+
     request.onupgradeneeded = function (event) {
-      const db = event.target.result;
-      const objectStore = db.createObjectStore("keyValueStore", {
-        keyPath: "key",
-      });
+      try {
+        const db = event.target.result;
+        db.createObjectStore("keyValueStore", { keyPath: "key" });
+      } catch (error) {
+        reject(new Error(`IndexedDB Set: Failed to create object store - ${error.message}`));
+      }
     };
+
     request.onsuccess = function (event) {
-      const db = event.target.result;
-      const transaction = db.transaction(["keyValueStore"], "readwrite");
-      const objectStore = transaction.objectStore("keyValueStore");
-      const addRequest = objectStore.put({ key: key, value: value });
-      addRequest.onsuccess = function () {
-        resolve();
-      };
-      addRequest.onerror = function (event) {
-        reject(event.target.error);
-      };
-      transaction.onerror = function (event) {
-        reject(event.target.error);
-      };
+      try {
+        const db = event.target.result;
+        const transaction = db.transaction(["keyValueStore"], "readwrite");
+        const objectStore = transaction.objectStore("keyValueStore");
+        const addRequest = objectStore.put({ key: key, value: value });
+
+        addRequest.onsuccess = function () {
+          resolve();
+        };
+        addRequest.onerror = function (event) {
+          reject(new Error(`IndexedDB Set: Put operation failed - ${event.target.error}`));
+        };
+        transaction.onerror = function (event) {
+          reject(new Error(`IndexedDB Set: Transaction failed - ${event.target.error}`));
+        };
+      } catch (error) {
+        reject(new Error(`IndexedDB Set: Operation failed - ${error.message}`));
+      }
     };
+
     request.onerror = function (event) {
-      reject(event.target.error);
+      reject(new Error(`IndexedDB Set: Database open failed - ${event.target.error}`));
     };
   });
 }
 function indexedDBGet(key, theDataBase = "db") {
   return new Promise((resolve, reject) => {
+    if (!key) {
+      reject(new Error("IndexedDB Get: Invalid key provided"));
+      return;
+    }
+
     const dbName = theDataBase;
     const dbVersion = 1;
-    const request = indexedDB.open(dbName, dbVersion);
+    let request;
+
+    try {
+      request = indexedDB.open(dbName, dbVersion);
+    } catch (error) {
+      reject(new Error(`IndexedDB Get: Failed to open database - ${error.message}`));
+      return;
+    }
+
     request.onsuccess = function (event) {
-      const db = event.target.result;
-      const transaction = db.transaction(["keyValueStore"], "readonly");
-      const objectStore = transaction.objectStore("keyValueStore");
-      const getRequest = objectStore.get(key);
-      getRequest.onsuccess = function (event) {
-        const storedValue = event.target.result ? event.target.result.value : null;
-        resolve(storedValue);
-      };
-      getRequest.onerror = function (event) {
-        reject(event.target.error);
-      };
-      transaction.onerror = function (event) {
-        reject(event.target.error);
-      };
+      try {
+        const db = event.target.result;
+        const transaction = db.transaction(["keyValueStore"], "readonly");
+        const objectStore = transaction.objectStore("keyValueStore");
+        const getRequest = objectStore.get(key);
+
+        getRequest.onsuccess = function (event) {
+          const storedValue = event.target.result ? event.target.result.value : null;
+          resolve(storedValue);
+        };
+        getRequest.onerror = function (event) {
+          reject(new Error(`IndexedDB Get: Retrieval failed - ${event.target.error}`));
+        };
+        transaction.onerror = function (event) {
+          reject(new Error(`IndexedDB Get: Transaction failed - ${event.target.error}`));
+        };
+      } catch (error) {
+        reject(new Error(`IndexedDB Get: Operation failed - ${error.message}`));
+      }
     };
+
     request.onerror = function (event) {
-      reject(event.target.error);
+      reject(new Error(`IndexedDB Get: Database open failed - ${event.target.error}`));
     };
   });
 }
@@ -90,7 +135,7 @@ if (localStorage.getItem("tagalogStoredStatus") === null) {
   putBookIntoIndexedDBtagalog("tagalog");
 }
 
-/**whole Genesis Array hard-coded for each language, to give the user somthing to look at while indexedDB pulls in the full Bible books */
+/**whole Genesis Array hard-coded for each language, to give the user somthing to look at while indexedDB pulls in the full 66 books */
 const genesisPreloadTagalogArr = [
   "Genesis+1*Nang pasimula, nilikha ng Dios ang langit at ang lupa. Ang mundo noon ay wala pang anyo at wala pang laman. Ang tubig na bumabalot sa mundo ay balot ng kadiliman. At ang Espiritu ng Dios ay kumikilos sa ibabaw ng mga tubig. Sinabi ng Dios, “Magkaroon ng liwanag!” At nagkaroon nga ng liwanag. Nasiyahan ang Dios sa liwanag na nakita niya. Pagkatapos, inihiwalay niya ang liwanag sa kadiliman. Tinawag niyang “araw” ang liwanag, at “gabi” naman ang kadiliman. Lumipas ang gabi at dumating ang umaga. Iyon ang unang araw. Pagkatapos, sinabi ng Dios, “Magkaroon ng pagitan na maghihiwalay sa tubig sa dalawang bahagi.” At nagkaroon nga ng pagitan na naghihiwalay sa tubig sa itaas at sa tubig sa ibaba. Ang pagitang itoʼy tinawag ng Dios na “kalawakan.” Lumipas ang gabi at dumating ang umaga. Iyon ang ikalawang araw. Pagkatapos, sinabi ng Dios, “Magsama sa isang lugar ang tubig sa mundo para lumitaw ang tuyong bahagi.” At iyon nga ang nangyari. Tinawag niyang “lupa” ang tuyong lugar, at “dagat” naman ang nagsamang tubig. Nasiyahan ang Dios sa nakita niya. Pagkatapos, sinabi ng Dios, “Magsitubo sa lupa ang lahat ng uri ng halaman, ang mga tanim na nagbubunga ng butil, at ang mga punongkahoy na namumunga ayon sa kani-kanilang uri.” At iyon nga ang nangyari. Tumubo sa lupa ang lahat ng uri ng halaman, ang mga tanim na nagbubunga ng butil, at ang mga punongkahoy na namumunga ayon sa kani-kanilang uri. Nasiyahan ang Dios sa nakita niya. Lumipas ang gabi at dumating ang umaga. Iyon ang ikatlong araw. Pagkatapos, sinabi ng Dios, “Magkaroon ng mga ilaw sa kalangitan para ihiwalay ang araw sa gabi, at magsilbing palatandaan ng pagsisimula ng mga panahon, araw at taon. Magningning ang mga ito sa kalangitan para magbigay-liwanag sa mundo.” At iyon nga ang nangyari. Nilikha ng Dios ang dalawang malaking ilaw: ang pinakamalaki ay magliliwanag kung araw, at ang mas malaki ay magliliwanag kung gabi. Nilikha rin niya ang mga bituin. Inilagay ng Dios ang mga ito sa kalangitan para magbigay-liwanag sa mundo kung araw at gabi, at para ihiwalay ang liwanag sa dilim. At nasiyahan ang Dios sa nakita niya. Lumipas ang gabi at dumating ang umaga. Iyon ang ikaapat na araw. Pagkatapos, sinabi ng Dios, “Magkaroon ng ibaʼt ibang hayop sa tubig at magsilipad ang ibaʼt ibang hayop sa himpapawid.” Kaya nilikha ng Dios ang malalaking hayop sa dagat, at ang lahat ng uri ng hayop na nakatira sa tubig, at ang lahat ng uri ng hayop na lumilipad. Nasiyahan ang Dios sa nakita niya. At binasbasan niya ang mga ito. Sinabi niya, “Magpakarami kayo, kayong mga hayop sa tubig at mga hayop na lumilipad.” Lumipas ang gabi at dumating ang umaga. Iyon ang ikalimang araw. Pagkatapos, sinabi ng Dios, “Magkaroon ng ibaʼt ibang uri ng hayop sa lupa: mga hayop na maamo at mailap, malalaki at maliliit.” At iyon nga ang nangyari. Nilikha ng Dios ang lahat ng ito at nasiyahan siya sa nakita niya. Pagkatapos, sinabi ng Dios, “Likhain natin ang tao ayon sa ating wangis. Sila ang mamamahala sa lahat ng uri ng hayop: mga lumalangoy, lumilipad, lumalakad at gumagapang.” Kaya nilikha ng Dios ang tao, lalaki at babae ayon sa wangis niya. Binasbasan niya sila at sinabi, “Magpakarami kayo para mangalat ang mga lahi ninyo at mamahala sa buong mundo. At pamahalaan ninyo ang lahat ng hayop.” Pagkatapos, sinabi ng Dios, “Ibinibigay ko sa inyo ang mga tanim na namumunga ng butil pati ang mga punongkahoy na namumunga para inyong kainin. At ibinibigay ko sa lahat ng hayop ang lahat ng luntiang halaman bilang pagkain nila.” At iyon nga ang nangyari. Pinagmasdan ng Dios ang lahat niyang nilikha at lubos siyang nasiyahan. Lumipas ang gabi at dumating ang umaga. Iyon ang ikaanim na araw.",
   "Genesis+2*Natapos likhain ng Dios ang kalangitan, ang mundo at ang lahat ng naroon. Natapos niya ito sa loob ng anim na araw at nagpahinga siya sa ikapitong araw. Binasbasan niya ang ikapitong araw at itinuring na di-pangkaraniwang araw, dahil sa araw na ito nagpahinga siya nang matapos niyang likhain ang lahat. Ito ang salaysay tungkol sa paglikha ng Dios sa kalangitan at sa mundo. Nang likhain ng Panginoong Dios ang mundo at ang kalangitan, wala pang tanim sa mundo at wala pang binhi ng anumang halaman ang nabubuhay, dahil hindi pa siya nagpapaulan at wala pang tao na mag-aalaga ng lupa. Pero kahit wala pang ulan, ang mga bukal sa mundo ang siyang bumabasa sa lupa. Nilikha ng Panginoong Dios ang tao mula sa lupa. Hiningahan niya sa ilong ang tao ng hiningang nagbibigay-buhay. Kaya ang tao ay naging buhay na nilalang. Pagkatapos, nilikha rin ng Panginoong Dios ang isang halamanan sa Eden, sa bandang silangan, at doon niya pinatira ang tao na nilikha niya. At pinatubo ng Panginoong Dios ang lahat ng uri ng puno na magagandang tingnan at may masasarap na bunga. Sa gitna ng halamanan ay may puno na nagbibigay ng buhay, at may puno rin doon na nagbibigay ng kaalaman kung ano ang mabuti at masama. Sa Eden ay may ilog na dumadaloy na siyang nagbibigay ng tubig sa halamanan. Nagsanga-sanga ito sa apat na ilog. Ang pangalan ng unang ilog ay Pishon. Dumadaloy ito sa buong lupain ng Havila kung saan mayroong ginto. Sa lugar na iyon makikita ang purong ginto, ang mamahaling pabango na bediliyum, at ang mamahaling bato na onix. Ang pangalan ng ikalawang ilog ay Gihon. Dumadaloy ito sa buong lupain ng Cush. Ang pangalan ng ikatlong ilog ay Tigris. Dumadaloy ito sa silangan ng Asiria. At ang ikaapat na ilog ay ang Eufrates. Pinatira ng Panginoong Dios sa halamanan ng Eden ang taong nilikha niya para mag-alaga nito. At sinabi niya sa tao, “Makakakain ka ng kahit anong bunga ng punongkahoy sa halamanan, maliban lang sa bunga ng punongkahoy na nagbibigay ng kaalaman kung ano ang mabuti at masama. Sapagkat sa oras na kainin mo ito, tiyak na mamamatay ka.” Pagkatapos, sinabi ng Panginoong Dios, “Hindi mabuting mabuhay ang tao nang nag-iisa lang, kaya igagawa ko siya ng kasama na tutulong sa kanya at nararapat sa kanya.” Nilikha ng Panginoong Dios mula sa lupa ang lahat ng uri ng hayop na nakatira sa lupa pati ang lahat ng uri ng hayop na lumilipad. Pagkatapos, dinala niya ang mga ito sa tao para tingnan kung ano ang ipapangalan nito sa kanila. At kung ano ang itatawag ng tao sa kanila, iyon ang magiging pangalan nila. Kaya pinangalanan ng tao ang mga hayop na nakatira sa lupa pati ang mga hayop na lumilipad. Pero para kay Adan, wala kahit isa sa kanila ang nararapat na maging kasama niya na makakatulong sa kanya. Kaya pinatulog ng Panginoong Dios ang tao nang mahimbing. At habang natutulog siya, kinuha ng Panginoong Dios ang isa sa mga tadyang ng lalaki at pinaghilom agad ang pinagkuhanan nito. Ang tadyang na kinuha ng Panginoong Dios sa lalaki ay nilikha niyang babae, at dinala niya sa lalaki. Sinabi ng lalaki, “Narito na ang isang tulad ko! Buto na kinuha sa aking mga buto, at laman na kinuha sa aking laman. Tatawagin siyang ‘babae,’ dahil kinuha siya mula sa lalaki.” Iyan ang dahilan na iiwan ng lalaki ang kanyang amaʼt ina at makikipag-isa sa kanyang asawa, at silang dalawa ay magiging isa. Nang panahong iyon, kahit huboʼt hubad silang dalawa, hindi sila nahihiya.",
@@ -455,30 +500,35 @@ window.onload = function () {
     })();
 
     /**get progress & render/display output-text */
-    /**refactor renderText() with an if condition, to check if progress is < than 50,
+    /**refactored renderText() with an if condition, to check if progress is < than 50,
      * if its less than 50(Genesis) then just use the hard coded Array to render text, no indexedDB */
-    const renderText = function () {
-      if (parseInt(localStorage.getItem("progress")) > 50) {
+    const renderText = async function () {
+      const progress = parseInt(localStorage.getItem("progress"));
+      const defaultLanguage = localStorage.getItem("defaultLanguage");
+      
+      if (progress > 50) {
         console.log("renderText()..");
-        setTimeout(function () {
-          indexedDBGet(localStorage.getItem("defaultLanguage"))
-            .then((value) => {
-              const v = value[parseInt(localStorage.getItem("progress"))];
-              document.getElementById("output-text").textContent = `${v.split("+")[0]}
+        // Small delay since indexedDB is async
+        setTimeout(async () => {
+          try {
+            const value = await indexedDBGet(defaultLanguage);
+            const v = value[progress];
+            document.getElementById("output-text").textContent = `${v.split("+")[0]}
 ${v.split("*")[1]}`;
-            })
-            .catch((error) => {
-              console.error("Error retrieving Value:", error);
-            });
-        }, 333); /**since indexedDB is async we need to set a bit of a delay to get the stored Bible Array*/
+          } catch (error) {
+            console.error("Error retrieving Value:", error);
+          }
+        }, 333);
       } else {
-        if (localStorage.getItem("defaultLanguage") == "english") {
-          const array = genesisPreloadEnglishArr[parseInt(localStorage.getItem("progress"))];
-          document.getElementById("output-text").textContent = `${array.split("+")[0]}
-${array.split("*")[1]}`;
+        // Use preloaded Genesis chapters for immediate display
+        let array;
+        if (defaultLanguage === "english") {
+          array = genesisPreloadEnglishArr[progress];
+        } else if (defaultLanguage === "tagalog") {
+          array = genesisPreloadTagalogArr[progress];
         }
-        if (localStorage.getItem("defaultLanguage") == "tagalog") {
-          const array = genesisPreloadTagalogArr[parseInt(localStorage.getItem("progress"))];
+        
+        if (array) {
           document.getElementById("output-text").textContent = `${array.split("+")[0]}
 ${array.split("*")[1]}`;
         }
@@ -542,137 +592,218 @@ ${array.split("*")[1]}`;
     localStorage.setItem("visitCount", newCount);
 
     /**named/hoisted function, so it can be used broadly */
-    function playAudioFunc() {
-      if (localStorage.getItem("defaultLanguage") == "tagalog") {
-        /**deactivate audio button */
-        document.getElementById("audioButton").classList.add("no-select-no-event");
+    async function playAudioFunc() {
+      const defaultLanguage = localStorage.getItem("defaultLanguage");
+      const progress = parseInt(localStorage.getItem("progress"));
+      
+      if (defaultLanguage === "tagalog") {
+        try {
+          /**validate audio button exists */
+          const audioButton = document.getElementById("audioButton");
+          if (!audioButton) {
+            throw new Error("Audio button element not found in DOM");
+          }
+          audioButton.classList.add("no-select-no-event");
 
-        /**set active audio session */
-        localStorage.setItem("audioActive", "true");
+          /**set active audio session */
+          localStorage.setItem("audioActive", "true");
 
-        /**load audio */
-        indexedDBGet(localStorage.getItem("defaultLanguage"))
-          .then((value) => {
-            /**load audio */
-            const audioElement = document.createElement("audio");
-            audioElement.id = "audio-element";
-            const chapterNumber = value[parseInt(localStorage.getItem("progress"))].split("+")[1].split("*")[0];
-            console.log(chapterNumber);
-            const bookName = value[parseInt(localStorage.getItem("progress"))].split("+")[0];
-            console.log(bookName);
-            audioElement.src = `https://wordfree.org/bibles/app/audio/46/${bookToIndex[bookName]}/${chapterNumber}.mp3`;
-            document.body.append(audioElement);
+          /**load audio from IndexedDB */
+          const value = await indexedDBGet(defaultLanguage);
+          if (!value) {
+            throw new Error(`No Bible data found for language: ${defaultLanguage}`);
+          }
+          if (!value[progress]) {
+            throw new Error(`No chapter data found at progress index: ${progress}`);
+          }
+          
+          /**validate chapter data format */
+          const chapterData = value[progress];
+          if (!chapterData.includes("+") || !chapterData.includes("*")) {
+            throw new Error(`Invalid chapter data format: ${chapterData.substring(0, 50)}...`);
+          }
 
-            /**display/load text */
-            renderText();
+          /**create and configure audio element */
+          const audioElement = document.createElement("audio");
+          audioElement.id = "audio-element";
+          const chapterNumber = chapterData.split("+")[1].split("*")[0];
+          const bookName = chapterData.split("+")[0];
+          
+          if (!chapterNumber || !bookName) {
+            throw new Error(`Failed to parse chapter data - Book: ${bookName}, Chapter: ${chapterNumber}`);
+          }
+          if (!bookToIndex[bookName]) {
+            throw new Error(`No audio index mapping found for book: ${bookName}`);
+          }
+          
+          console.log(`Loading Tagalog audio - Book: ${bookName}, Chapter: ${chapterNumber}`);
+          audioElement.src = `https://wordfree.org/bibles/app/audio/46/${bookToIndex[bookName]}/${chapterNumber}.mp3`;
+          
+          /**handle audio load errors */
+          audioElement.onerror = function (e) {
+            console.error("Audio load error:", e);
+            alert(`Failed to load audio for ${bookName} chapter ${chapterNumber}. The audio file may not be available.`);
+            localStorage.setItem("audioActive", "false");
+            const btn = document.getElementById("audioButton");
+            if (btn) btn.classList.remove("no-select-no-event");
+          };
+          
+          document.body.append(audioElement);
 
-            /*onended, onloadeddata, oncanplay, oncanplaythrough, to listen for audio-related events*/
-            audioElement.oncanplay = function () {
-              /**Enable browser's built-in audio controls*/
-              audioElement.controls = true;
-              /**Style to ensure visibility with spaceship neon effect*/
-              Object.assign(audioElement.style, {
-                position: "fixed",
-                bottom: "20px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "85%",
-                height: "60px",
-                padding: "10px",
-                borderRadius: "12px",
-                backgroundColor: "rgba(10, 12, 20, 0.85)",
-                boxShadow: "0 0 10px #0ff, 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 15px rgba(0, 100, 255, 0.3)",
-                border: "1px solid #0ff",
-                zIndex: "99999999999",
-                filter: "drop-shadow(0 0 5px rgba(0, 255, 255, 0.7))",
-                colorScheme: "dark",
-                outline: "none",
-              });
-              audioElement.play();
-            };
+          /**display/load text */
+          await renderText();
 
-            audioElement.onended = function () {
-              console.log(" audioElement.onended");
-              /**update progress after checking to see if progress is less than 1188 chapters (zero based index so thats why its not 1189 chapters*/
-              if (parseInt(localStorage.getItem("progress")) < 1188) {
-                localStorage.setItem("progress", parseInt(localStorage.getItem("progress")) + 1);
-                location.reload();
-              }
-            };
-          })
-          .catch((error) => {
-            console.error("Error retrieving Value:", error);
-          });
+          /*onended, onloadeddata, oncanplay, oncanplaythrough, to listen for audio-related events*/
+          audioElement.oncanplay = function () {
+            /**Enable browser's built-in audio controls*/
+            audioElement.controls = true;
+            /**Style to ensure visibility with spaceship neon effect*/
+            Object.assign(audioElement.style, {
+              position: "fixed",
+              bottom: "20px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "85%",
+              height: "60px",
+              padding: "10px",
+              borderRadius: "12px",
+              backgroundColor: "rgba(10, 12, 20, 0.85)",
+              boxShadow: "0 0 10px #0ff, 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 15px rgba(0, 100, 255, 0.3)",
+              border: "1px solid #0ff",
+              zIndex: "99999999999",
+              filter: "drop-shadow(0 0 5px rgba(0, 255, 255, 0.7))",
+              colorScheme: "dark",
+              outline: "none",
+            });
+            audioElement.play().catch((playError) => {
+              console.error("Audio play failed:", playError);
+              alert("Audio playback failed. Please tap the play button manually.");
+            });
+          };
+
+          audioElement.onended = function () {
+            console.log("audioElement.onended - Tagalog");
+            /**update progress after checking to see if progress is less than 1188 chapters (zero based index so thats why its not 1189 chapters*/
+            if (progress < 1188) {
+              localStorage.setItem("progress", progress + 1);
+              location.reload();
+            }
+          };
+        } catch (error) {
+          console.error("Tagalog Audio Error:", error.message);
+          alert(`Audio Error: ${error.message}`);
+          localStorage.setItem("audioActive", "false");
+          const audioButton = document.getElementById("audioButton");
+          if (audioButton) audioButton.classList.remove("no-select-no-event");
+        }
       }
-      if (localStorage.getItem("defaultLanguage") == "english") {
-        /**deactivate audio button */
-        document.getElementById("audioButton").classList.add("no-select-no-event");
+      if (defaultLanguage === "english") {
+        try {
+          /**validate audio button exists */
+          const audioButton = document.getElementById("audioButton");
+          if (!audioButton) {
+            throw new Error("Audio button element not found in DOM");
+          }
+          audioButton.classList.add("no-select-no-event");
 
-        /**set active audio session */
-        localStorage.setItem("audioActive", "true");
+          /**set active audio session */
+          localStorage.setItem("audioActive", "true");
 
-        /**load audio */
-        indexedDBGet(localStorage.getItem("defaultLanguage"))
-          .then((value) => {
-            /**load audio */
-            const audioElement = document.createElement("audio");
-            audioElement.id = "audio-element";
-            const chapterNumber = value[parseInt(localStorage.getItem("progress"))].split("+")[1].split("*")[0];
-            console.log(chapterNumber);
-            const bookName = value[parseInt(localStorage.getItem("progress"))].split("+")[0];
-            console.log(bookName);
-            const filterBooksFunc = function () {
-              if (chapterNumber.toString().length == 1) {
-                return `https://publicdomainaudiobibles.com/content/mp3/KJV/${bookToAbr[bookName]}0${chapterNumber}.mp3`;
-              }
-              if (chapterNumber.toString().length >= 2) {
-                return `https://publicdomainaudiobibles.com/content/mp3/KJV/${bookToAbr[bookName]}${chapterNumber}.mp3`;
-              }
-            };
-            audioElement.src = filterBooksFunc();
+          /**load audio from IndexedDB */
+          const value = await indexedDBGet(defaultLanguage);
+          if (!value) {
+            throw new Error(`No Bible data found for language: ${defaultLanguage}`);
+          }
+          if (!value[progress]) {
+            throw new Error(`No chapter data found at progress index: ${progress}`);
+          }
+          
+          /**validate chapter data format */
+          const chapterData = value[progress];
+          if (!chapterData.includes("+") || !chapterData.includes("*")) {
+            throw new Error(`Invalid chapter data format: ${chapterData.substring(0, 50)}...`);
+          }
 
-            document.body.append(audioElement);
+          /**create and configure audio element */
+          const audioElement = document.createElement("audio");
+          audioElement.id = "audio-element";
+          const chapterNumber = chapterData.split("+")[1].split("*")[0];
+          const bookName = chapterData.split("+")[0];
+          
+          if (!chapterNumber || !bookName) {
+            throw new Error(`Failed to parse chapter data - Book: ${bookName}, Chapter: ${chapterNumber}`);
+          }
+          if (!bookToAbr[bookName]) {
+            throw new Error(`No audio abbreviation mapping found for book: ${bookName}`);
+          }
+          
+          console.log(`Loading English audio - Book: ${bookName}, Chapter: ${chapterNumber}`);
+          
+          /**helper function to format audio URL based on chapter number */
+          const getAudioUrl = (chapterNum, book) => {
+            const paddedChapter = chapterNum.toString().padStart(2, "0");
+            return `https://publicdomainaudiobibles.com/content/mp3/KJV/${bookToAbr[book]}${paddedChapter}.mp3`;
+          };
+          
+          audioElement.src = getAudioUrl(chapterNumber, bookName);
+          
+          /**handle audio load errors */
+          audioElement.onerror = function (e) {
+            console.error("Audio load error:", e);
+            alert(`Failed to load audio for ${bookName} chapter ${chapterNumber}. The audio file may not be available.`);
+            localStorage.setItem("audioActive", "false");
+            const btn = document.getElementById("audioButton");
+            if (btn) btn.classList.remove("no-select-no-event");
+          };
+          
+          document.body.append(audioElement);
 
-            /**display/load text */
-            renderText();
+          /**display/load text */
+          await renderText();
 
-            /*onended, onloadeddata, oncanplay, oncanplaythrough, to listen for audio-related events*/
-            audioElement.oncanplay = function () {
-              /**Enable browser's built-in audio controls*/
-              audioElement.controls = true;
-              /**Style to ensure visibility with spaceship neon effect*/
-              Object.assign(audioElement.style, {
-                position: "fixed",
-                bottom: "20px",
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: "85%",
-                height: "60px",
-                padding: "10px",
-                borderRadius: "12px",
-                backgroundColor: "rgba(10, 12, 20, 0.85)",
-                boxShadow: "0 0 10px #0ff, 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 15px rgba(0, 100, 255, 0.3)",
-                border: "1px solid #0ff",
-                zIndex: "99999999999",
-                filter: "drop-shadow(0 0 5px rgba(0, 255, 255, 0.7))",
-                colorScheme: "dark",
-                outline: "none",
-              });
-              audioElement.play();
-            };
+          /*onended, onloadeddata, oncanplay, oncanplaythrough, to listen for audio-related events*/
+          audioElement.oncanplay = function () {
+            /**Enable browser's built-in audio controls*/
+            audioElement.controls = true;
+            /**Style to ensure visibility with spaceship neon effect*/
+            Object.assign(audioElement.style, {
+              position: "fixed",
+              bottom: "20px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "85%",
+              height: "60px",
+              padding: "10px",
+              borderRadius: "12px",
+              backgroundColor: "rgba(10, 12, 20, 0.85)",
+              boxShadow: "0 0 10px #0ff, 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 15px rgba(0, 100, 255, 0.3)",
+              border: "1px solid #0ff",
+              zIndex: "99999999999",
+              filter: "drop-shadow(0 0 5px rgba(0, 255, 255, 0.7))",
+              colorScheme: "dark",
+              outline: "none",
+            });
+            audioElement.play().catch((playError) => {
+              console.error("Audio play failed:", playError);
+              alert("Audio playback failed. Please tap the play button manually.");
+            });
+          };
 
-            audioElement.onended = function () {
-              console.log(" audioElement.onended");
-              /**update progress after checking to see if progress is less than 1188 chapters (zero based index so thats why its not 1189 chapters*/
-              if (parseInt(localStorage.getItem("progress")) < 1188) {
-                localStorage.setItem("progress", parseInt(localStorage.getItem("progress")) + 1);
-                location.reload();
-              }
-            };
-          })
-          .catch((error) => {
-            console.error("Error retrieving Value:", error);
-          });
+          audioElement.onended = function () {
+            console.log("audioElement.onended - English");
+            /**update progress after checking to see if progress is less than 1188 chapters (zero based index so thats why its not 1189 chapters*/
+            if (progress < 1188) {
+              localStorage.setItem("progress", progress + 1);
+              location.reload();
+            }
+          };
+        } catch (error) {
+          console.error("English Audio Error:", error.message);
+          alert(`Audio Error: ${error.message}`);
+          localStorage.setItem("audioActive", "false");
+          const audioButton = document.getElementById("audioButton");
+          if (audioButton) audioButton.classList.remove("no-select-no-event");
+        }
       }
     }
 
