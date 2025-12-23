@@ -165,3 +165,9 @@
   z-index: 1;
 }
 
+@media (min-width: 992px) {
+  .output-text,
+  .output-text-light {
+    top: 65%;
+  }
+}
